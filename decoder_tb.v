@@ -1,13 +1,9 @@
 module decoder_tb();
-  logic [7:0] y, PPt,PP;
-logic [2:0] sdn;
-  logic [8:0] p;
-logic [7:0] PPNeg;
-assign y = 8'b00001000;
-assign sdn = 3'b011;
-assign p[0] = 0;
-assign p[8:1] = y[7:0];
-decoder decode(sdn,y,PP); 
+logic [7:0] y[0:10], PPt[0:10],PP[0:10];
+logic [2:0] sdn[0:10];
+logic [8:0] p[0:10];
+logic [7:0] PPNeg[0:10];
+
 
 function [7:0]out; // complement function
 input [7:0] in;
@@ -31,24 +27,32 @@ end
 
 end
 endfunction
-genvar i;
+genvar i,k;
+for (k=1;k<=10;k++)
+begin
+assign y[k] = $urandom_range(8,15);
+assign sdn[k] = $urandom_range(0,7);
+assign p[k][0] = 0;
+  assign p[k][8:1] = y[k][7:0];
+decoder decode(sdn[k],y[k],PP[k]); 
 for(i = 1; i<=8;i=i+1) 
 begin
-  always_comb begin
-if(((sdn[1] == 1'b1) && (p[i-1] == 1'b1)) || ((sdn[2] == 1'b1)&&(p[i] == 1'b1))) begin
-PPNeg[i-1] = 1'b1; end
-else
-PPNeg[i-1] = 1'b0;
-  end end
 always_comb begin
-if (sdn[0] == 1'b1)
-PPt[7:0] = out(PPNeg[7:0]);
+if(((sdn[k][1] == 1'b1) && (p[k][i-1] == 1'b1)) || ((sdn[k][2] == 1'b1)&&(p[k][i] == 1'b1))) begin
+PPNeg[k][i-1] = 1'b1; end
 else
-PPt[7:0] = PPNeg[7:0];end
+PPNeg[k][i-1] = 1'b0;
+end end
+always_comb begin
+if (sdn[k][0] == 1'b1)
+PPt[k][7:0] = out(PPNeg[k][7:0]);
+else
+PPt[k][7:0] = PPNeg[k][7:0];end
 initial
 begin
-  a1:assert(PPt === PP) begin
-#1 $display("The Partial product is correct. PPt = %b, PP = %b", PPt,PP); end
-else #1 $error ("The Partial product is not correct. PPt = %b, PP = %b", PPt,PP);
+a1:assert(PPt[k] === PP[k]) begin
+#1 $display("The Partial product is correct. PPt = %b, PP = %b", PPt[k],PP[k]); end
+else #1 $error ("The Partial product is not correct. PPt = %b, PP = %b", PPt[k],PP[k]);
+end
 end
 endmodule
