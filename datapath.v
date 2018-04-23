@@ -181,11 +181,11 @@ endmodule
 module divider(A,B,xi,C,D,xinew);
 
 	input [7:0] A, B,xi;
-	output [7:0] reg C,D;
+	output reg [7:0] C,D;
 	output [7:0] xinew;
 	wire [7:0]Fi,exp;
 	reg [7:0]neg;
-	reg [7:0] two,down, E,F;
+	reg [7:0] two,down,E,F;
 	wire [7:0] extra1,extra2,extra3,extra4; 
 	wire [15:0] Ni,Di,xin;
 	wire cin,cout,c1,c2,c3,c4,c5;
@@ -258,6 +258,7 @@ endfunction
 	
 	multiplier m2 (extra2,extra3,Di);	 // Di multiplying
 	multiplier m1 (extra1,extra3,Ni);    // Ni multiplying
+	//assign C[7] = B[7] ^ xi[7]; // Representing Di
 	assign e1 = A[6:3];
 	assign e2 = xi[6:3];
 	assign e3 = B[6:3];
@@ -282,10 +283,10 @@ endfunction
 	two = 8'b01000000;
 	E[7:4] = 3'b000;
 	F[7:4] = 3'b000;	
-	sr1 = two[6:3]; // exponent value of 2
+	sr1 = 4'b1000; // exponent value of 2
 	sr2 = C[6:3]; // exponent value of D	
 	E[3:0] = sr2;
-	F[3:0] = sr1;
+	F[3:0] = 4'b1000;
 	end
 	
 	always @ (sum1,sum2,sr1,sr2) begin // 2-Di functionality
@@ -309,26 +310,41 @@ endfunction
 		end
 	else begin	
 		comp[3:0] = shift[3:0]; end
-		
-	while (sr1 > sr2) // shifting
-	begin 
-	comp[3:0] = comp[3:0] >> 1;	
-	E[3:0] = sum (sr2,4'b0001);
-	sr2 = E[3:0];
-	down[6:3] = sr2; 
-	down[2:0] = comp[2:0];
-// 	$display ("down is %b,comp is %b",down[2:0],comp);
-	end
-// 	end
-	
-	while (sr2 > sr1) begin //shifting
-	shift1[3:0] = shift1[3:0] >> 1;
-	F[3:0] = sum (sr1,4'b0001);
-	sr1 = F[3:0];
-	two[6:3] = sr1;
-	two[2:0] = shift1[2:0];
-// 	#90 $display ("two is %b",two[2:0]);
-	end
+	case(sr2)
+		4'b1000:begin down[6:3] = sr2; down[2:0] = comp[2:0]; end 
+		4'b1001:begin shift1[3:0] = shift1[3:0] >> 1; 	
+					  F[3:0] = sum (sr1,4'b0001);
+					  sr1 = F[3:0];
+		              two[6:3] = sr1; 
+					  two[2:0] = shift1[2:0]; end
+		4'b1010:begin shift1[3:0] = shift1[3:0] >> 2; 	
+					  F[3:0] = sum (sr1,4'b0001);
+					  sr1 = F[3:0];
+		              two[6:3] = sr1; 
+					  two[2:0] = shift1[2:0]; end
+		4'b0111:begin comp[3:0] = comp[3:0] >> 1; 	
+					  E[3:0] = sum (sr2,4'b0001);
+					  sr2 = E[3:0];
+		              down[6:3] = sr2; 
+					  down[2:0] = comp[2:0]; end
+		4'b0110:begin comp[3:0] = comp[3:0] >> 2; 	
+					  E[3:0] = sum (sr2,4'b0010);
+					  sr2 = E[3:0];
+		              down[6:3] = sr2; 
+					  down[2:0] = comp[2:0]; end
+		4'b0101:begin comp[3:0] = comp[3:0] >> 3; 	
+					  E[3:0] = sum (sr2,4'b0011);
+					  sr2 = E[3:0];
+		              down[6:3] = sr2; 
+					  down[2:0] = comp[2:0]; end
+		4'b0100:begin comp[3:0] = comp[3:0] >> 4; 	
+					  E[3:0] = sum (sr2,4'b0100);
+					  sr2 = E[3:0];
+		              down[6:3] = sr2; 
+					  down[2:0] = comp[2:0]; end
+		default:begin down[6:3] = sr2; down[2:0] = comp[2:0]; end
+	endcase
+
 	end
 	
 // 	assign cp1 = shift1[3:0];
@@ -384,6 +400,7 @@ endfunction
 
 endmodule
 
+
 module div (A,B,Q);
 input [7:0]A,B;
 output reg [7:0]Q;
@@ -400,11 +417,11 @@ always @ (A,B)
 begin
 if (B == 8'b00000000 ) begin
 $display("Division impossible");
-$finish;
+//$finish;
 end
 else if(A == 8'b00000000) begin
 $display("Q is 00000000");
-$finish;
+//$finish;
 end
 end
 
@@ -414,8 +431,8 @@ begin
 // #400 $display("approx,o1,i1 is %b,%b,%b",xin,o1,i1);
 if (o1 == 8'b00111000 || o1 == 8'b00110111 || o1 == 8'b00110100 || o1 == 8'b00110110 || x1 == 8'b00000000) begin
 Q = i1;
-$display("Q is %b; finished 1",Q);
-$finish;
+//$display("Q is %b; finished 1",Q);
+//$finish;
 end
 else  begin
 Q =i1;
@@ -430,11 +447,11 @@ divider d2 (A,B,x1,o2,i2,x2);
 
 always @ (o2,i2)
 begin
-$display("d1-C,d1-D,d1-xinew,xin,d1-Fi is %b,%b,%b,%b,%b",d1.C,d1.D,d1.xinew,xin,d1.Fi);
+//$display("d1-C,d1-D,d1-xinew,xin,d1-Fi is %b,%b,%b,%b,%b",d1.C,d1.D,d1.xinew,xin,d1.Fi);
 if (o2 == 8'b00111000 || o2 == 8'b00110111 || o2 == 8'b00110100 || o2 == 8'b00110110 ||x2 == 8'b00000000 ) begin
 Q = i2;
-$display("Q is %b; finished 2", Q);
-$finish;
+//$display("Q is %b; finished 2", Q);
+//$finish;
 end
 else begin
 Q = i2;
@@ -449,7 +466,7 @@ divider d3 (A,B,x2,o3,i3,xout);
 
 always @ (o3,i3)
 begin
-#1000 $display("o2,i2 is %b,%b",d2.C,d2.D);
+//#1000 $display("o2,i2 is %b,%b",d2.C,d2.D);
 
 Q = i3;
 // 
@@ -458,41 +475,24 @@ end
 
 endmodule
 
-module rom(
-exponent, // Exponent input
-approx     // Approximate output
-//read_en , // Read Enable 
-//ce        // Chip Enable
-);
+module rom(exponent,approx);
 input [3:0] exponent;
 output reg [3:0] approx;
-//input read_en;
-//input ce;
 
-// reg [2:0] data ;
-       
-always @ (exponent) //(ce or read_en or address)
+always @ (exponent)
 begin
+  //$display("%b",exponent);
   case (exponent)
   		4'b0111: approx = 4'b0111;
   		4'b1000: approx = 4'b0110;
   		4'b1001: approx = 4'b0101;
   		4'b1010: approx = 4'b0100;
-//   		4'b1011: approx = 4'b0010;
-//   		4'b1100: approx = 
-//   		4'b1101: approx =
-//   		4'b1110: approx =
-//   		4'b1111: approx =
-  
-//     3'b000 : data = 3'b111; //0.875
-//     3'b001 : data = 3'b111; //0.875
-//     3'b010 : data = 3'b110; //0.75 OR 111=0.875
-//     3'b011 : data = 3'b110; //0.75
-//     3'b100 : data = 3'b101; //0.625
-//     3'b101 : data = 3'b101; //0.625
-//     3'b110 : data = 3'b100; //0.5 OR 101=0.625
-//     3'b111 : data = 3'b100; //0.5
+		4'b0110: approx = 4'b1000;
+		4'b0101: approx = 4'b1001;
+		4'b0100: approx = 4'b1010;
+		default: approx = 4'b0000;
   endcase
 end
 
 endmodule
+
