@@ -181,7 +181,8 @@ endmodule
 module divider(A,B,xi,C,D,xinew);
 
 	input [7:0] A, B,xi;
-	output [7:0] C,D, xinew;
+	output [7:0] reg C,D;
+	output [7:0] xinew;
 	wire [7:0]Fi,exp;
 	reg [7:0]neg;
 	reg [7:0] two,down, E,F;
@@ -189,8 +190,8 @@ module divider(A,B,xi,C,D,xinew);
 	wire [15:0] Ni,Di,xin;
 	wire cin,cout,c1,c2,c3,c4,c5;
 	reg [2:0] option1,ans1,ans;
-	reg [3:0] sr1,sr2,shift,shift1,comp,ans2,shift2;
-	wire [3:0] e1, e2,e3,e4, sum1,sum2,sum3,sum4,sum5,sum6 ,cp1,cp2;
+	reg [3:0] sr1,sr2,shift,shift1,comp,ans2,shift2,e4;
+	wire [3:0] e1, e2,e3,sum1,sum2,sum3,sum4,sum5,sum6 ,cp1,cp2;
 	genvar i;
 	
 	assign cin = 1'b0;
@@ -257,7 +258,6 @@ endfunction
 	
 	multiplier m2 (extra2,extra3,Di);	 // Di multiplying
 	multiplier m1 (extra1,extra3,Ni);    // Ni multiplying
-	assign C[7] = B[7] ^ xi[7]; // Representing Di
 	assign e1 = A[6:3];
 	assign e2 = xi[6:3];
 	assign e3 = B[6:3];
@@ -265,13 +265,20 @@ endfunction
 	assign sum2 = sum (e2,e3);
 	assign sum3 = sum (sum1,exp);
 	assign sum4 = sum (sum2,exp);
-	assign C[6:3] = sum4[3:0];
-	assign D[6:3] = sum3[3:0];
-	assign D[7] = A[7] ^ xi[7]; // Representing Ni
-	assign C[2:0] = Di[5:3];
-	assign D[2:0] = Ni[5:3];
 	
-	always @ (C,D) begin
+	always @ (A,B,sum3,sum4,e1,e3,sum1,sum2,Ni,Di,extra2,extra3,extra1) begin
+	C[6:3] = sum4[3:0];
+	D[6:3] = sum3[3:0];
+	C[7] = B[7] ^ xi[7];
+	D[7] = A[7] ^ xi[7]; // Representing Ni
+	if (C[6] == 1'b0 && C[7] == 1'b1) 
+	C[2:0] = Di[6:4];
+	else
+	C[2:0] = Di[5:3];
+	if (D[6] == 1'b0 && D[7] == 1'b1)
+	D[2:0] = Ni[6:4];
+	else
+	D[2:0] = Ni[5:3];
 	two = 8'b01000000;
 	E[7:4] = 3'b000;
 	F[7:4] = 3'b000;	
@@ -365,7 +372,11 @@ endfunction
 	multiplier m3 (extra4,extra3,xin); // new xi value
 	
 	assign xinew[7] = Fi[7] ^ xi[7];
-	assign e4 = Fi[6:3];
+	always @ (xinew,Fi) 
+	begin
+	if (Fi[6] == 0 && Fi[7] == 1) e4 = Fi[6:4];
+	else e4 = Fi[5:3];
+	end
 	assign sum5 = sum(e4,e2);
 	assign sum6 = sum(sum5,exp);
 	assign xinew[6:3] = sum6;
