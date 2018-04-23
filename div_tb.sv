@@ -1,5 +1,5 @@
 module testbench ();
-  logic [7:0]q[50],a[50],b[50];
+  logic [7:0]q[0:50],a[0:50],b[0:50];
   genvar i;
   for(i=1;i<=50;i++)
       begin
