@@ -224,7 +224,7 @@ if (temp1[j-1]== 1'b1) begin
 for (k=j; k<=3; k=k+1) begin
 out[k] = ~ temp1[k]; end end
 else if (temp1[j-1] == 1'b0 &(out[j] ==1'b1 || out[j] == 1'b0))
-out[j] = out[j];
+	out[j] = temp1[j];
 else
 out[j] = temp1[j];
 
