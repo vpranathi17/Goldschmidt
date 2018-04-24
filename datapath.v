@@ -213,18 +213,21 @@ module divider(A,B,xi,C,D,xinew);
 function [3:0]out; // complement function
 input [3:0] in;
 reg [3:0] temp1;
+  reg flag;
 integer j,k;
 begin
 out[0] = in[0];
+  flag = 1'b0;
 temp1[3:0] = in[3:0];
 
 for(j=1; j<=3; j=j+1)
 begin
 if (temp1[j-1]== 1'b1) begin
 for (k=j; k<=3; k=k+1) begin
-out[k] = ~ temp1[k]; end end
-else if (temp1[j-1] == 1'b0 &(out[j] ==1'b1 || out[j] == 1'b0))
-	out[j] = out[j];
+out[k] = ~ temp1[k]; 
+flag = 1'b1; end end
+  else if (temp1[j-1] == 1'b0 &(flag == 1'b1))
+out[j] = out[j];
 else
 out[j] = temp1[j];
 
@@ -495,4 +498,5 @@ begin
 end
 
 endmodule
+
 
