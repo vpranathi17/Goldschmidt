@@ -1,11 +1,57 @@
+// Modified booth multiplier module
+module multiplier(x,y,product);
+
+input [7:0]x,y;
+output [16:0]product;
+wire [8:0]PP1,PP2,PP3,PP4;
+wire [8:0]sum1,sum2,sum3;
+wire [8:0]s1,s2,s3,s4;
+wire [2:0]sdn1,sdn2,sdn3,sdn4;
+wire cin,c1,c2,c3;
+
+encoder e (x,sdn1,sdn2,sdn3,sdn4);
+decoder d1 (sdn1,y,PP1);
+decoder d2 (sdn2,y,PP2);
+decoder d3 (sdn3,y,PP3);
+decoder d4 (sdn4,y,PP4);
+
+assign cin = 1'b0;
+
+function [8:0]extend;
+input [8:0]PP;
+begin
+extend[8] = PP[8];
+extend[7] = PP[8];
+extend[6:0]= PP[8:2];
+end
+endfunction
+
+assign cin = 1'b0;
+assign product[1:0] = PP1[1:0];
+assign s1 = extend(PP1);
+cla cl1 (s1, PP2, cin, sum1, c1 );
+assign product [3:2] = sum1[1:0];
+assign s2 = extend(sum1);
+cla cl2 (s2, PP3, cin, sum2, c2 );
+assign product [5:4] = sum2 [1:0];
+assign s3 = extend(sum2);
+cla cl3 (s3, PP4, cin, sum3, c3 );
+assign product [7:6] = sum3[1:0];
+assign s4 = extend(sum3);
+assign product[16:8] = s4[8:0];
+
+endmodule
+
+//Encoder module 
+
 module encoder(x,sdn1,sdn2,sdn3,sdn4);
 
-input [7:0]x;
+input signed [7:0]x;
 output [2:0]sdn1, sdn2, sdn3, sdn4; //single,double,negate
-// output [8:0] PP1,PP2,PP3;
 
 wire [2:0]xh,xm,xl,xxh;
 
+//Dividing input into groups
 assign xl[0]=1'b0;
 assign xl[2:1]=x[1:0];
 assign xm[2:0]=x[3:1];
@@ -38,36 +84,41 @@ assign sdn2[2:0]= encoding(xm);
 assign sdn3[2:0]= encoding(xh);
 assign sdn4[2:0]= encoding(xxh);
 
-// decoder d1 (sdn1,y,PP1);
-// decoder d2 (sdn2,y,PP2);
-// decoder d3 (sdn3,y,PP3);
-
 endmodule
+
+//Decoder module
 
 module decoder (sdn,y,PP);
 input [2:0]sdn;
-input [7:0]y;
-output [7:0]PP;
-wire [7:0]cout;
+input signed [7:0]y;
+output signed [8:0]PP;
+wire [8:0]cout;
 wire cin,s1,s2;
-wire [7:0]o1,o2,pp1,sum;
-wire [8:0]p;
+wire [7:0]o1,o2,pp1;
+wire [8:0]sum;
+reg [8:0]p;
 genvar j;
  
 assign s1 = ~ sdn[2];
 assign s2 = ~ sdn[1];
 assign cin = sdn[0];
-assign p[0] = 0;
-assign p[8:1] = y[7:0];
+//assign p[0] = 0;
+//assign p[8:1] = y[7:0];
 
-
-for (j=1; j<=8;j=j+1) begin
-assign o1[j-1] = (s1 & sdn[1] & p[j-1]);
-assign o2[j-1] = (s2 & p[j] & sdn[2]);
-assign pp1[j-1] = (o1[j-1] | o2[j-1]);
-assign sum[j-1] = pp1[j-1] ^ sdn[0];
+  always @(sdn,y) begin
+if (sdn == 3'b010 || sdn == 3'b011)
+p[8:0] = y[7:0] << 1; //2A
+else if (sdn == 3'b000 || sdn == 3'b001)
+p[8:0] = 9'b000000000; // 0
+else if  (sdn == 3'b100 || sdn == 3'b101) begin p[8] = y[7]; // A
+p[7:0] = y[7:0]; end
 end
 
+//Partial product generation 
+for (j=1; j<=9;j=j+1) begin
+assign sum[j-1] = p[j-1] ^ sdn[0];//XOR with NEG
+end
+//Adding NEG
 half h1 (PP[0],cout[0],sum[0],cin);
 half h2 (PP[1],cout[1],sum[1],cout[0]);
 half h3 (PP[2],cout[2],sum[2],cout[1]);
@@ -76,20 +127,21 @@ half h5 (PP[4],cout[4],sum[4],cout[3]);
 half h6 (PP[5],cout[5],sum[5],cout[4]);
 half h7 (PP[6],cout[6],sum[6],cout[5]);
 half h8 (PP[7],cout[7],sum[7],cout[6]);
-
-// initial
-// #700 $display ("%b",PP);
-
+half h9 (PP[8],cout[8],sum[8],cout[7]); 
+//initial
+//#1 $display("%b",o2);
 endmodule
 
+//Carry Look Ahead Adder module
+
 module cla(a,b,cin,sum,cout);
-	input [7:0] a,b;
+	input [8:0] a,b;
 	input cin;
-	output [7:0] sum;
+	output [8:0] sum;
 	output cout;
-	wire [7:0] p,g,c;
+	wire [8:0] p,g,c;
 	genvar j;
-	for(j=0;j<=7;j=j+1)
+	for(j=0;j<=8;j=j+1)
 	begin
 	  assign p[j]=(a[j]^b[j]); //propogate stage
 	  assign g[j]=(a[j]&b[j]); //generate stage
@@ -100,52 +152,10 @@ module cla(a,b,cin,sum,cout);
 	  
 	  assign sum[j]=p[j]^c[j]; //sum generation
 		end	
-		assign cout=c[7];
+		assign cout=c[8];
 endmodule
 
-module multiplier(x,y,product);
-
-input [7:0]x,y;
-output [15:0]product;
-wire [7:0]PP1,PP2,PP3,PP4,sum1,sum2,sum3,s1,s2,s3;
-wire [2:0]sdn1,sdn2,sdn3,sdn4;
-wire cin,c1,c2,c3;
-
-encoder e (x,sdn1,sdn2,sdn3,sdn4);
-decoder d1 (sdn1,y,PP1);
-decoder d2 (sdn2,y,PP2);
-decoder d3 (sdn3,y,PP3);
-decoder d4 (sdn4,y,PP4);
-
-assign cin = 1'b0;
-
-function [7:0]extend;
-input [7:0]PP;
-begin
-extend[7] = PP[7];
-extend[6] = PP[7];
-extend[5:0]= PP[7:2];
-end
-endfunction
-
-assign cin = 1'b0;
-assign product[1:0] = PP1[1:0];
-assign s1 = extend(PP1);
-cla cl1 (s1, PP2, cin, sum1, c1 );
-assign product [3:2] = sum1[1:0];
-assign s2 = extend(sum1);
-cla cl2 (s2, PP3, cin, sum2, c2 );
-assign product [5:4] = sum2 [1:0];
-assign s3 = extend(sum2);
-cla cl3 (s3, PP4, cin, sum3, c3 );
-assign product [13:6] = sum3[7:0];
-assign product[14] = product[13];
-assign product[15] = product[13];
-// 
-// initial
-// #90 $display("%b,%b,%b,%b,%b,%b,%b,%b",sdn1,sdn2,sdn3,sdn4,PP1,PP2,PP3,PP4);
-
-endmodule
+//Half Adder module
 
 module half (sum,carry,a,b);
 	output reg sum,carry;
@@ -174,8 +184,6 @@ module half (sum,carry,a,b);
 		endcase
 		end
 		
-// 		initial
-// 		#200 $display("%b,%b",a,b);
 endmodule
 
 module divider(A,B,xi,C,D,xinew);
@@ -270,7 +278,7 @@ endfunction
 	assign sum3 = sum (sum1,exp);
 	assign sum4 = sum (sum2,exp);
 	
-	always @ (A,B,sum3,sum4,e1,e3,sum1,sum2,Ni,Di,extra2,extra3,extra1) begin
+	always @ (Ni,Di) begin
 	C[6:3] = sum4[3:0];
 	D[6:3] = sum3[3:0];
 	C[7] = B[7] ^ xi[7];
